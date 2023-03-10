@@ -1,0 +1,51 @@
+import ccxt
+import talib
+import time
+
+# establish connection to Binance exchange
+exchange = ccxt.binance({
+    'apiKey': 'YOUR_API_KEY',
+    'secret': 'YOUR_SECRET_KEY',
+    'enableRateLimit': True
+})
+
+# set parameters
+macd_periods = (12, 26, 9)
+rsi_periods = 14
+bb_periods = 20
+obv_periods = 14
+adx_periods = 14
+buy_signal = 1
+sell_signal = -1
+stop_loss = 0.01
+take_profit = 0.02
+
+# get historical data
+symbol = 'BTC/USDT'
+timeframe = '1h'
+limit = 1000
+ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit)
+close = [ohlcv[i][4] for i in range(len(ohlcv))]
+
+# calculate indicators
+macd, macdsignal, macdhist = talib.MACD(close, *macd_periods)
+rsi = talib.RSI(close, rsi_periods)
+upper, middle, lower = talib.BBANDS(close, bb_periods)
+obv = talib.OBV(close, exchange.fetch_ohlcv(symbol, timeframe, limit, params={'type': 'future'}))
+adx = talib.ADX(high, low, close, adx_periods)
+
+# set initial variables
+position = 0
+entry_price = 0
+stop_loss_price = 0
+take_profit_price = 0
+
+# loop through each candle
+for i in range(1, len(close)):
+    # check for buy signal
+    if macd[i] > macdsignal[i] and macd[i-1] < macdsignal[i-1] and rsi[i] < 30 and position == 0:
+        entry_price = close[i]
+        stop_loss_price = entry_price * (1 - stop_loss)
+        take_profit_price = entry_price * (1 + take_profit)
+        position = buy_signal
+        print('Buy signal detected.')
